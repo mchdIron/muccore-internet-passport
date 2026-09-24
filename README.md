@@ -104,6 +104,107 @@ flowchart TB
 
 The **control and analysis plane** validates targets, coordinates modules, normalizes evidence, calculates coverage-aware results and maintains historical observations. The **isolated measurement plane** performs measurements that require a real network or browser runtime. This separation keeps the public application layer distinct from active measurement execution.
 
+## End-to-end topology & data flow
+
+This view combines the product modules with the actual service/provider boundaries. It shows **where a scan originates, which platform performs each part, where evidence travels, and where results return** without exposing private addresses, credentials or deployment secrets.
+
+```mermaid
+flowchart TB
+    USER(["Analyst / Browser"])
+
+    subgraph GITHUB["GitHub · Source & Delivery"]
+        GH["Private Production Repository"]
+        DOC["Public Product Documentation"]
+    end
+
+    subgraph CF["Cloudflare · Edge / Control / Data Plane"]
+        EDGE["passport.muccore.com<br/>Public UI + API"]
+        WORKER["Cloudflare Worker<br/>Scan Orchestration"]
+        ENGINES["Worker Analysis Engines<br/>Web · DNS · Mail Policy<br/>Infrastructure · Behavior · Scoring"]
+        D1[("Cloudflare D1<br/>Scan Evidence · Findings<br/>History · Deltas")]
+        KV[("Cloudflare KV<br/>Ephemeral Scan State / Cache")]
+        TUNNEL["Cloudflare Tunnel<br/>Authenticated Service Path"]
+    end
+
+    subgraph NODE["MUCCORE Research Node · Measurement Plane"]
+        API["Node.js Research Service"]
+        TLS["HTTPS / TLS Probe"]
+        SMTP["SMTP / STARTTLS Probe"]
+        CHROME["Playwright / Chromium<br/>Safe Preview"]
+    end
+
+    subgraph GOOGLE["Google Cloud · SMTP Execution Path"]
+        GCS["Google Cloud Shell<br/>SMTP Executor"]
+    end
+
+    subgraph INTERNET["External / Target-side Providers"]
+        DNS["Authoritative / Recursive DNS"]
+        WEB["Target Web Infrastructure<br/>Origin · CDN · WAF"]
+        MX["Target Mail Providers / MX"]
+        PKI["Public PKI / TLS Endpoints"]
+    end
+
+    USER -->|"1 · Start scan / view result"| EDGE
+    GH -.->|"Production delivery"| WORKER
+    GH -.->|"Sanitized docs"| DOC
+    EDGE -->|"2 · API request"| WORKER
+    WORKER -->|"3 · Coordinate"| ENGINES
+    WORKER <-->|"State"| KV
+    WORKER <-->|"Evidence / history"| D1
+
+    ENGINES <-->|"4a · DNS / HTTP evidence"| DNS
+    ENGINES <-->|"4b · Web evidence"| WEB
+
+    WORKER -->|"5 · Authenticated measurement job"| TUNNEL
+    TUNNEL --> API
+    API --> TLS
+    API --> SMTP
+    API --> CHROME
+
+    TLS <-->|"6a · TLS handshake / certificate evidence"| PKI
+    TLS <-->|"6b · HTTPS measurement"| WEB
+    CHROME <-->|"6c · Isolated page rendering"| WEB
+
+    SMTP -->|"7 · SMTP execution request"| GCS
+    GCS <-->|"8 · TCP/25 · EHLO · STARTTLS"| MX
+    GCS -->|"9 · SMTP/TLS evidence"| SMTP
+
+    API -->|"10 · Measurement result"| TUNNEL
+    TUNNEL --> WORKER
+    ENGINES -->|"11 · Normalize / correlate / score"| WORKER
+    WORKER -->|"12 · Persist canonical result"| D1
+    WORKER -->|"13 · Completed / partial result"| EDGE
+    EDGE -->|"14 · Intelligence view"| USER
+
+    classDef cf fill:#17152b,stroke:#7c5cff,color:#fff,stroke-width:2px;
+    classDef node fill:#101827,stroke:#38bdf8,color:#fff,stroke-width:2px;
+    classDef google fill:#182313,stroke:#8bc34a,color:#fff,stroke-width:2px;
+    classDef ext fill:#171717,stroke:#6b7280,color:#fff;
+    classDef store fill:#10201b,stroke:#29c995,color:#fff;
+    classDef user fill:#25173a,stroke:#c084fc,color:#fff,stroke-width:2px;
+    class USER user;
+    class EDGE,WORKER,ENGINES,TUNNEL cf;
+    class D1,KV store;
+    class API,TLS,SMTP,CHROME node;
+    class GCS google;
+    class DNS,WEB,MX,PKI ext;
+```
+
+### Provider responsibilities and traffic
+
+| Provider / zone | Role in MUCCORE | Data sent | Data returned |
+|---|---|---|---|
+| **Analyst browser** | Starts assessments and consumes intelligence | Public target/domain and scan request | Findings, scores, evidence summaries, history and preview |
+| **Cloudflare** | Public edge, Worker compute, orchestration, storage and secure service path | Measurement jobs and public-target requests | Worker analysis, persisted evidence and Research Node responses |
+| **MUCCORE Research Node** | Dedicated network/browser measurement plane | HTTPS/TLS probes, preview requests and SMTP jobs | TLS, certificate, SMTP and isolated-render evidence |
+| **Google Cloud Shell** | SMTP executor used when direct outbound TCP/25 is unavailable from the Research Node environment | MX host/SMTP measurement job | SMTP banner, EHLO, STARTTLS and transport/TLS evidence |
+| **Target DNS providers** | Supply public DNS posture | DNS queries | DNS records, DNSSEC/CAA/authority evidence |
+| **Target web/CDN/WAF providers** | Serve the target's public HTTP surface | HTTP/HTTPS requests and isolated browser navigation | Headers, redirects, content/render state and protection/challenge evidence |
+| **Target mail providers** | Expose public MX/SMTP transport | SMTP connection, EHLO and STARTTLS negotiation | SMTP capabilities and transport TLS evidence |
+| **GitHub** | Source control and delivery source; separate public documentation repository | Versioned project changes | Deployment source and public documentation |
+
+The key distinction is that **Cloudflare is the control/data plane**, while the **MUCCORE Research Node is the dedicated measurement plane**. Google Cloud Shell is not the main application backend; it is a specialized execution path for SMTP measurements where outbound TCP/25 connectivity is required. Cloudflare D1 and KV remain on the Cloudflare side; scan evidence does not use Google Cloud Shell as application storage.
+
 ## Evidence-aware scoring
 
 MUCCORE does not turn missing telemetry into an automatic security failure.

@@ -104,6 +104,107 @@ flowchart TB
 
 **Control & Analysis Plane** hedef doğrulama, modül koordinasyonu, evidence normalization, coverage-aware sonuç üretimi ve historical observation yönetimini üstlenir. **Isolated Measurement Plane** ise gerçek network veya browser runtime gerektiren ölçümleri gerçekleştirir. Böylece public application katmanı ile aktif measurement execution birbirinden ayrılır.
 
+## Uçtan uca topoloji ve veri akışı
+
+Bu görünüm ürün modüllerini gerçek servis/üretici sınırlarıyla birleştirir. Yani yalnızca “hangi modül var?” değil; **scan nereden başlıyor, hangi üretici hangi işi yapıyor, veri nereye gidiyor ve sonuç nereden geri geliyor?** sorularını da gösterir. Private adres, credential ve deployment secret'ları bilinçli olarak gösterilmez.
+
+```mermaid
+flowchart TB
+    USER(["Analist / Browser"])
+
+    subgraph GITHUB["GitHub · Source & Delivery"]
+        GH["Private Production Repository"]
+        DOC["Public Product Documentation"]
+    end
+
+    subgraph CF["Cloudflare · Edge / Control / Data Plane"]
+        EDGE["passport.muccore.com<br/>Public UI + API"]
+        WORKER["Cloudflare Worker<br/>Scan Orchestration"]
+        ENGINES["Worker Analysis Engines<br/>Web · DNS · Mail Policy<br/>Infrastructure · Behavior · Scoring"]
+        D1[("Cloudflare D1<br/>Scan Evidence · Findings<br/>History · Deltas")]
+        KV[("Cloudflare KV<br/>Ephemeral Scan State / Cache")]
+        TUNNEL["Cloudflare Tunnel<br/>Authenticated Service Path"]
+    end
+
+    subgraph NODE["MUCCORE Research Node · Measurement Plane"]
+        API["Node.js Research Service"]
+        TLS["HTTPS / TLS Probe"]
+        SMTP["SMTP / STARTTLS Probe"]
+        CHROME["Playwright / Chromium<br/>Safe Preview"]
+    end
+
+    subgraph GOOGLE["Google Cloud · SMTP Execution Path"]
+        GCS["Google Cloud Shell<br/>SMTP Executor"]
+    end
+
+    subgraph INTERNET["Harici / Target Tarafındaki Üreticiler"]
+        DNS["Authoritative / Recursive DNS"]
+        WEB["Target Web Infrastructure<br/>Origin · CDN · WAF"]
+        MX["Target Mail Providers / MX"]
+        PKI["Public PKI / TLS Endpoints"]
+    end
+
+    USER -->|"1 · Scan başlat / sonucu görüntüle"| EDGE
+    GH -.->|"Production delivery"| WORKER
+    GH -.->|"Sanitized docs"| DOC
+    EDGE -->|"2 · API request"| WORKER
+    WORKER -->|"3 · Orchestrate"| ENGINES
+    WORKER <-->|"State"| KV
+    WORKER <-->|"Evidence / history"| D1
+
+    ENGINES <-->|"4a · DNS / HTTP evidence"| DNS
+    ENGINES <-->|"4b · Web evidence"| WEB
+
+    WORKER -->|"5 · Authenticated measurement job"| TUNNEL
+    TUNNEL --> API
+    API --> TLS
+    API --> SMTP
+    API --> CHROME
+
+    TLS <-->|"6a · TLS handshake / certificate evidence"| PKI
+    TLS <-->|"6b · HTTPS measurement"| WEB
+    CHROME <-->|"6c · İzole page rendering"| WEB
+
+    SMTP -->|"7 · SMTP execution request"| GCS
+    GCS <-->|"8 · TCP/25 · EHLO · STARTTLS"| MX
+    GCS -->|"9 · SMTP/TLS evidence"| SMTP
+
+    API -->|"10 · Measurement result"| TUNNEL
+    TUNNEL --> WORKER
+    ENGINES -->|"11 · Normalize / correlate / score"| WORKER
+    WORKER -->|"12 · Canonical sonucu sakla"| D1
+    WORKER -->|"13 · COMPLETED / PARTIAL result"| EDGE
+    EDGE -->|"14 · Intelligence görünümü"| USER
+
+    classDef cf fill:#17152b,stroke:#7c5cff,color:#fff,stroke-width:2px;
+    classDef node fill:#101827,stroke:#38bdf8,color:#fff,stroke-width:2px;
+    classDef google fill:#182313,stroke:#8bc34a,color:#fff,stroke-width:2px;
+    classDef ext fill:#171717,stroke:#6b7280,color:#fff;
+    classDef store fill:#10201b,stroke:#29c995,color:#fff;
+    classDef user fill:#25173a,stroke:#c084fc,color:#fff,stroke-width:2px;
+    class USER user;
+    class EDGE,WORKER,ENGINES,TUNNEL cf;
+    class D1,KV store;
+    class API,TLS,SMTP,CHROME node;
+    class GCS google;
+    class DNS,WEB,MX,PKI ext;
+```
+
+### Üretici bazında görev ve trafik
+
+| Üretici / katman | MUCCORE'daki görevi | Giden veri | Geri gelen veri |
+|---|---|---|---|
+| **Analist browser'ı** | Scan başlatır ve intelligence sonucunu görüntüler | Public target/domain ve scan isteği | Findings, score, evidence özeti, history ve preview |
+| **Cloudflare** | Public edge, Worker compute, orchestration, storage ve güvenli servis yolu | Measurement job'ları ve public-target request'leri | Worker analizleri, stored evidence ve Research Node cevapları |
+| **MUCCORE Research Node** | Ayrılmış network/browser measurement plane | HTTPS/TLS probe, preview request ve SMTP job | TLS, certificate, SMTP ve isolated-render evidence |
+| **Google Cloud Shell** | Research Node ortamından doğrudan outbound TCP/25 mümkün olmadığında kullanılan SMTP executor | MX host / SMTP measurement job | SMTP banner, EHLO, STARTTLS ve transport/TLS evidence |
+| **Target DNS üreticileri** | Public DNS posture'u sağlar | DNS query | DNS records, DNSSEC/CAA/authority evidence |
+| **Target web/CDN/WAF üreticileri** | Target'ın public HTTP yüzeyini sunar | HTTP/HTTPS request ve isolated browser navigation | Header, redirect, content/render state ve protection/challenge evidence |
+| **Target mail üreticileri** | Public MX/SMTP transport'u sunar | SMTP connection, EHLO ve STARTTLS negotiation | SMTP capability ve transport TLS evidence |
+| **GitHub** | Source control/deployment source ve ayrı public dokümantasyon | Versioned project changes | Deployment source ve public documentation |
+
+Buradaki en önemli ayrım: **Cloudflare control/data plane**, **MUCCORE Research Node ise dedicated measurement plane** olarak çalışır. Google Cloud Shell ana backend değildir; outbound TCP/25 gereken SMTP ölçümlerinde kullanılan özel execution path'idir. Cloudflare D1 ve KV Cloudflare tarafında kalır; scan evidence uygulama storage'ı olarak Google Cloud Shell'e yazılmaz.
+
 ## Evidence-aware scoring
 
 MUCCORE ölçülemeyen telemetry'yi otomatik güvenlik hatasına dönüştürmez.
