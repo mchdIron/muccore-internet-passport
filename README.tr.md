@@ -120,6 +120,88 @@ flowchart TB
 
 Control & Analysis Plane target validation, modül koordinasyonu, evidence normalization, coverage-aware sonuç üretimi ve historical observation yönetimini üstlenir. Isolated Measurement Plane ise dedicated network socket'i, browser execution veya lokal reputation data gerektiren ölçümleri gerçekleştirir.
 
+## Deployment ve provider topolojisi
+
+Bu görünüm yalnızca source code mimarisini değil, MUCCORE etrafındaki gerçek servis/provider topolojisini gösterir. Bu nedenle repository içinde application module olarak bulunmayan operasyonel bileşenler de diyagramda yer alır.
+
+```mermaid
+flowchart TB
+    USER(["Analist / Browser"])
+    GH["GitHub<br/>Private production repo<br/>Public documentation repo"]
+
+    subgraph CF["Cloudflare · Edge / Control / Data Plane"]
+        EDGE["passport.muccore.com<br/>Public UI + API"]
+        WORKER["Cloudflare Worker<br/>Validation · Orchestration<br/>Analysis · Scoring"]
+        D1[("Cloudflare D1<br/>Scans · Findings<br/>History · Deltas")]
+        KV[("Cloudflare KV<br/>Ephemeral State · Cache")]
+        TUNNEL["Cloudflare Tunnel<br/>Authenticated Service Path"]
+    end
+
+    subgraph LINUX["Linux Server · MUCCORE Research Node"]
+        RN["Node.js Research Service"]
+        TLS["HTTPS / TLS Probe"]
+        HTTP["Pinned HTTP Probe"]
+        SMTP["SMTP / STARTTLS Probe"]
+        PREVIEW["Playwright / Chromium<br/>Safe Preview"]
+        REP["Reputation Engine"]
+        RDB[("Local Reputation DB<br/>Indicators · Feed State<br/>Freshness")]
+        RN --> TLS
+        RN --> HTTP
+        RN --> SMTP
+        RN --> PREVIEW
+        RN --> REP
+        REP <--> RDB
+    end
+
+    subgraph GOOGLE["Google Cloud"]
+        GCS["Google Cloud Shell<br/>External SMTP Execution Path"]
+    end
+
+    subgraph FEEDS["Threat Intelligence Provider'ları"]
+        OP["OpenPhish Community"]
+        FEODO["Feodo Tracker"]
+        PT["PhishTank"]
+    end
+
+    subgraph TARGET["Target / Internet Provider'ları"]
+        DNS["DNS Provider'ları"]
+        WEB["Web · CDN · WAF"]
+        MX["Mail Provider'ları / MX"]
+        PKI["TLS / PKI Endpoint'leri"]
+    end
+
+    USER <-->|"Scan / intelligence sonucu"| EDGE
+    GH -.->|"Source / deployment"| WORKER
+    EDGE --> WORKER
+    WORKER <--> D1
+    WORKER <--> KV
+    WORKER -->|"Authenticated job"| TUNNEL
+    TUNNEL --> RN
+
+    WORKER <-->|"DNS / HTTP evidence"| DNS
+    WORKER <-->|"Web analysis"| WEB
+
+    TLS <-->|"TLS handshake / certificate"| PKI
+    TLS <-->|"HTTPS"| WEB
+    HTTP <-->|"HTTP(S)"| WEB
+    PREVIEW <-->|"Isolated rendering"| WEB
+
+    SMTP <-->|"Mümkün olduğunda direct SMTP"| MX
+    SMTP <-->|"SMTP execution path"| GCS
+    GCS <-->|"TCP/25 · EHLO · STARTTLS"| MX
+
+    OP -->|"Feed sync"| REP
+    FEODO -->|"Feed sync"| REP
+    PT -->|"Feed sync"| REP
+
+    RN -->|"Measurement result"| TUNNEL
+    TUNNEL --> WORKER
+    WORKER -->|"Canonical evidence"| D1
+    EDGE -->|"Rendered result"| USER
+```
+
+Topoloji üç farklı state/execution alanını ayırır: persisted scan evidence/history Cloudflare D1'da, ephemeral state/cache Cloudflare KV'de, reputation indicator ve feed state ise Linux Research Node üzerindeki lokal reputation database'de tutulur. Google Cloud Shell ana backend veya database değil; SMTP ölçümleri için kullanılan özel external execution path olarak gösterilir.
+
 ## Evidence-aware scoring
 
 MUCCORE ölçülemeyen telemetry'yi otomatik güvenlik hatasına dönüştürmez.
