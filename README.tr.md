@@ -12,6 +12,9 @@ MUCCORE Internet Passport, internete açık yüzeyleri evidence-backed bir secur
 
 > Bu repository yalnızca **public ürün dokümantasyonu** içerir. Production source code, deployment configuration, private infrastructure ayrıntıları ve operasyonel secret'lar burada yayınlanmaz.
 
+
+Reputation yüzeyi ayrıca canlı DNSBL/RHSBL kontrollerini kullanır: Spamhaus ZEN/DBL, SpamCop SCBL, DroneBL, SPFBL, UCEPROTECT Level 1–3, Backscatterer, PSBL, blocklist.de, Scientific Spam IP/RHSBL, Anonmails DNSBL ve Spam Eating Monkey URI. Domain/URL hedeflerinde en fazla iki çözümlenmiş public IPv4 adresi de uygun IP listelerinde kontrol edilir. Sağlayıcı timeout/erişim hataları temiz sonuç olarak değil, unavailable olarak raporlanır.
+
 ## MUCCORE neleri analiz ediyor?
 
 Normal bir surface assessment yedi research modülünden oluşur:
