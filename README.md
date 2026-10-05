@@ -30,13 +30,16 @@ MUCCORE also provides coverage-aware scoring, structured findings, raw technical
 
 ## Reputation Intelligence
 
-Reputation is a **separate lookup surface**, not one of the seven persisted scan modules. Domains, public IPv4 addresses and HTTP(S) URLs can be checked against MUCCORE's synchronized local threat-intelligence feeds.
+Reputation is a **separate lookup surface**, not one of the seven persisted scan modules. Domains, public IPv4 addresses and HTTP(S) URLs can be checked against MUCCORE's synchronized local threat-intelligence feeds and live DNSBL/RHSBL reputation sources.
 
 Current feed coverage includes:
 
 - **OpenPhish Community** — phishing URLs and hosts
 - **Feodo Tracker** — botnet C2 IPv4 indicators
 - **PhishTank** — verified online phishing URLs and hosts
+- **Live DNS reputation** — Spamhaus ZEN/DBL, SpamCop SCBL, DroneBL, SPFBL, UCEPROTECT Levels 1–3, Backscatterer, PSBL, blocklist.de, Scientific Spam IP/RHSBL, Anonmails DNSBL and Spam Eating Monkey URI
+
+For domain and URL targets, MUCCORE can also evaluate up to two resolved public IPv4 addresses against applicable IP DNSBLs. Provider timeouts, resolver restrictions and access-policy responses are reported as unavailable rather than clear.
 
 Results preserve source-level matches, classifications, timestamps and feed-health context. A target that is not present in the configured feeds is **not automatically considered safe**, and MUCCORE does not manufacture an aggregate threat score from absence of evidence.
 
