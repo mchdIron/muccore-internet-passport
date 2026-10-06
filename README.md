@@ -1,6 +1,6 @@
 # MUCCORE Internet Passport
 
-**Public Surface Intelligence for domains, URLs, and Internet-facing infrastructure.**
+**See your digital presence from the outside.**
 
 [![Status](https://img.shields.io/badge/status-active-6C63FF)](https://passport.muccore.com)
 [![Platform](https://img.shields.io/badge/platform-MUCCORE-111827)](https://passport.muccore.com)
@@ -8,239 +8,184 @@
 **Live platform:** https://passport.muccore.com  
 **Türkçe:** [README.tr.md](README.tr.md)
 
-MUCCORE Internet Passport turns public Internet exposure into an evidence-backed security posture view. It correlates web, DNS, mail, TLS, infrastructure and passive behavior evidence, adds an isolated visual preview, preserves historical observations, and provides a separate reputation lookup surface.
+MUCCORE Internet Passport is a security research platform for understanding how a digital presence appears from the outside. It combines persisted **Surface Intelligence**, dedicated **Reputation Intelligence**, browser-only **Message Intelligence**, and **Change Intelligence** in one product.
 
-> This repository contains **public product documentation only**. Production source code, deployment configuration, private infrastructure details and operational secrets are intentionally not published here.
+> This repository contains **public product documentation only**. Production source code, secrets and private operational configuration are not published here.
 
-## What MUCCORE analyzes
+## Product at a glance
 
-A normal surface assessment contains seven research modules:
+### Surface Intelligence — 7 persisted scan modules
 
-| Surface | Current coverage |
+| Module | What it observes |
 |---|---|
 | **Web Security** | HTTP/HTTPS behavior, redirects, security headers, HSTS, CSP, framing controls, cookies and browser-facing policies |
-| **DNS Security** | Public DNS records, DNSSEC, CAA, authoritative nameserver posture and related evidence |
-| **Mail Security** | MX inventory, recursive SPF analysis, DMARC, MTA-STS, TLS-RPT and SMTP/STARTTLS transport evidence |
-| **TLS & Certificates** | Certificate trust/hostname/chain/expiry, TLS 1.0–1.3 capability, negotiated cipher, bounded weak/deprecated cipher checks and forward-secrecy evidence |
-| **Infrastructure** | Public IPv4/IPv6 relationships, PTR/rDNS, edge/topology evidence and bounded IP/ASN/network/geolocation enrichment |
-| **Behavior Signals** | Passive bounded observations such as redirects, forms/password fields, iframes, external scripts and meta refresh |
-| **Safe Preview** | Isolated browser rendering, static screenshot evidence and observed challenge/protection classification |
+| **DNS Security** | Public DNS records, DNSSEC, CAA and authoritative nameserver posture |
+| **Mail Security** | MX inventory, SPF, DMARC, MTA-STS, TLS-RPT and SMTP/STARTTLS transport observations |
+| **TLS & Certificates** | Certificate trust/hostname/chain/expiry, TLS capability, negotiated cipher and bounded protocol/cipher observations |
+| **Infrastructure** | Public IPv4/IPv6 relationships, PTR/rDNS, edge/topology and bounded network/ASN enrichment |
+| **Behavior Signals** | Passive bounded observations of redirects, forms/password fields, iframes, external scripts and meta refresh |
+| **Safe Preview** | Isolated browser rendering, static screenshot output and observed challenge/protection states |
 
-MUCCORE also provides coverage-aware scoring, structured findings, raw technical evidence, JSON export, 30-day scan history and comparison with previous completed observations.
+Surface results include coverage-aware scoring, structured findings, raw technical observations, JSON export, history and change comparison.
 
-## Reputation Intelligence
+### Reputation Intelligence
 
-Reputation is a **separate lookup surface**, not one of the seven persisted scan modules. Domains, public IPv4 addresses and HTTP(S) URLs can be checked against MUCCORE's synchronized local threat-intelligence feeds and live DNSBL/RHSBL reputation sources.
+Reputation is **separate from the seven persisted Surface Scan modules**. It can investigate domains, public IPv4 addresses and HTTP(S) URLs using synchronized local threat feeds and live DNS reputation sources.
 
-Current feed coverage includes:
+Current source families include OpenPhish, Feodo Tracker, PhishTank and multiple DNSBL/RHSBL providers including Spamhaus ZEN/DBL, SpamCop, DroneBL, SPFBL, UCEPROTECT, Backscatterer, PSBL, blocklist.de, Scientific Spam, Anonmails and Spam Eating Monkey.
 
-- **OpenPhish Community** — phishing URLs and hosts
-- **Feodo Tracker** — botnet C2 IPv4 indicators
-- **PhishTank** — verified online phishing URLs and hosts
-- **Live DNS reputation** — Spamhaus ZEN/DBL, SpamCop SCBL, DroneBL, SPFBL, UCEPROTECT Levels 1–3, Backscatterer, PSBL, blocklist.de, Scientific Spam IP/RHSBL, Anonmails DNSBL and Spam Eating Monkey URI
+MUCCORE keeps source semantics visible:
 
-For domain and URL targets, MUCCORE can also evaluate up to two resolved public IPv4 addresses against applicable IP DNSBLs. Provider timeouts, resolver restrictions and access-policy responses are reported as unavailable rather than clear.
+- provider failures/timeouts are **unavailable**, not clean;
+- “not listed” does **not** mean safe;
+- a listing is source evidence, not automatic proof of maliciousness;
+- Reputation does not manufacture a generic threat score from missing evidence.
 
-Results preserve source-level matches, classifications, timestamps and feed-health context. A target that is not present in the configured feeds is **not automatically considered safe**, and MUCCORE does not manufacture an aggregate threat score from absence of evidence.
+### Message Intelligence — browser-only header forensics
+
+Message Intelligence analyzes a raw email header supplied by the user and reconstructs available forensic context such as:
+
+- visible and envelope identities;
+- reported SPF, DKIM, DMARC and ARC results;
+- DKIM signing metadata when present;
+- Received-hop journey and timing;
+- transport/TLS hints exposed in headers;
+- MIME/content structure;
+- mail-client/origin signals;
+- vendor/security telemetry;
+- duplicate, malformed, chronology and alignment-related review signals;
+- categorized header explanation and raw evidence.
+
+Reported authentication is not presented as independent cryptographic verification. If a receiving system reports `dkim=pass`, MUCCORE identifies it as a reported result rather than claiming the browser independently verified the signature.
+
+#### Privacy
+
+**Your email header never leaves your browser.**
+
+```text
+Raw header → browser-side analyzer → forensic result
+```
+
+The Message Header Analyzer does not send the supplied header to MUCCORE servers and does not persist it. There is **no Message Intelligence retention**.
+
+### Change Intelligence
+
+Change Intelligence is a cross-cutting product capability, not an eighth scan module. Repeat Surface Scans can be compared with previous completed observations.
+
+Current retention policy:
+
+| Data | Retention |
+|---|---:|
+| Surface Scan evidence/history | **30 days** |
+| Safe Preview screenshots | **24 hours** |
+| Message Intelligence raw headers/results | **Not stored** |
 
 ## Product model
 
 ```mermaid
 flowchart LR
-    T["Public Target"] --> C["MUCCORE<br/>Collection & Analysis"]
-    C --> W["Web"]
-    C --> D["DNS"]
-    C --> M["Mail"]
-    C --> L["TLS"]
-    C --> I["Infrastructure"]
-    C --> B["Behavior"]
-    C --> P["Safe Preview"]
-    C --> R["Reputation Lookup"]
+    A["Analyst"] --> S["Surface Intelligence<br/>7 persisted modules"]
+    A --> R["Reputation Intelligence"]
+    A --> M["Message Intelligence<br/>browser-only"]
 
-    W --> E["Evidence Layer"]
-    D --> E
-    M --> E
-    L --> E
-    I --> E
-    B --> E
-    P --> E
+    S --> P["Security posture<br/>findings · coverage · scores"]
+    S --> C["Change Intelligence<br/>history · deltas"]
+    R --> RI["Source-level reputation context"]
+    M --> MF["Message forensics<br/>identity · auth · routing · transport"]
 
-    E --> F["Findings + Coverage"]
-    F --> S["Security Posture Scores"]
-    S --> H["History + Change Intelligence"]
-    R --> RI["Source-level Reputation Evidence"]
-
-    classDef core fill:#17152b,stroke:#7c5cff,color:#fff,stroke-width:2px;
-    classDef module fill:#0e1420,stroke:#53657d,color:#fff;
-    classDef evidence fill:#101b1a,stroke:#29c995,color:#fff;
-    class T,C core;
-    class W,D,M,L,I,B,P,R module;
-    class E,F,S,H,RI evidence;
+    classDef primary fill:#17152b,stroke:#7c5cff,color:#fff,stroke-width:2px;
+    classDef secondary fill:#0e1420,stroke:#53657d,color:#fff;
+    class A,S,R,M primary;
+    class P,C,RI,MF secondary;
 ```
 
 ## High-level architecture
 
-The public architecture intentionally describes responsibilities rather than private deployment details.
+Public documentation intentionally describes responsibilities rather than private deployment details.
 
 ```mermaid
 flowchart TB
-    U([Analyst]) --> UI["MUCCORE Internet Passport<br/>Surface Intelligence Console"]
+    U(["Analyst / Browser"])
+    UI["MUCCORE<br/>Web Console"]
 
     subgraph CP["Control & Analysis Plane"]
-        O["Scan Orchestration"]
-        A["Analysis Engines"]
-        S[("Evidence & History")]
-        O --> A
-        O <--> S
+        O["Validation & Orchestration"]
+        A["Surface Analysis Engines"]
+        H[("Surface History & Change Data")]
     end
 
     subgraph MP["Isolated Measurement Plane"]
         N["MUCCORE Research Node"]
-        TP["HTTPS / TLS Measurements"]
-        SP["SMTP / STARTTLS Measurements"]
-        BP["Isolated Browser Capture"]
-        RP["Local Reputation Intelligence"]
-        N --> TP
-        N --> SP
-        N --> BP
-        N --> RP
+        T["HTTPS / TLS"]
+        S["SMTP / STARTTLS"]
+        B["Isolated Browser Capture"]
+        R["Reputation Intelligence"]
     end
 
+    M["Message Intelligence<br/>runs in browser"]
+
+    U --> UI
+    U --> M
     UI --> O
-    O -->|"Authenticated measurement jobs"| N
-    A --> NET((Public Internet))
-    TP --> NET
-    SP --> NET
-    BP --> NET
-
-    classDef edge fill:#17152b,stroke:#7c5cff,color:#fff,stroke-width:2px;
-    classDef plane fill:#0e1420,stroke:#53657d,color:#fff;
-    classDef data fill:#101b1a,stroke:#29c995,color:#fff;
-    class UI,O,A,N,TP,SP,BP,RP edge;
-    class U,NET plane;
-    class S data;
+    O --> A
+    O <--> H
+    O -->|"authenticated measurement jobs"| N
+    N --> T
+    N --> S
+    N --> B
+    N --> R
+    A --> NET(("Public Internet"))
+    T --> NET
+    S --> NET
+    B --> NET
+    R --> NET
 ```
 
-The control and analysis plane validates targets, coordinates modules, normalizes evidence, calculates coverage-aware results and maintains historical observations. The isolated measurement plane performs measurements that require dedicated network sockets, browser execution or local reputation data.
+The important boundary is intentional: Surface Scan state/history is server-side product data, while Message Intelligence stays in the analyst's browser.
 
-## Deployment & provider topology
+## Scoring semantics
 
-This view describes the real service/provider topology around MUCCORE, including components that are operational infrastructure rather than source-controlled application modules.
+MUCCORE is coverage-aware:
 
-```mermaid
-flowchart TB
-    USER(["Analyst / Browser"])
-    GH["GitHub<br/>Private production repo<br/>Public documentation repo"]
-
-    subgraph CF["Cloudflare · Edge / Control / Data Plane"]
-        EDGE["passport.muccore.com<br/>Public UI + API"]
-        WORKER["Cloudflare Worker<br/>Validation · Orchestration<br/>Analysis · Scoring"]
-        D1[("Cloudflare D1<br/>Scans · Findings<br/>History · Deltas")]
-        KV[("Cloudflare KV<br/>Ephemeral State · Cache")]
-        TUNNEL["Cloudflare Tunnel<br/>Authenticated Service Path"]
-    end
-
-    subgraph LINUX["Linux Server · MUCCORE Research Node"]
-        RN["Node.js Research Service"]
-        TLS["HTTPS / TLS Probe"]
-        HTTP["Pinned HTTP Probe"]
-        SMTP["SMTP / STARTTLS Probe"]
-        PREVIEW["Playwright / Chromium<br/>Safe Preview"]
-        REP["Reputation Engine"]
-        RDB[("Local Reputation DB<br/>Indicators · Feed State<br/>Freshness")]
-        RN --> TLS
-        RN --> HTTP
-        RN --> SMTP
-        RN --> PREVIEW
-        RN --> REP
-        REP <--> RDB
-    end
-
-    subgraph GOOGLE["Google Cloud"]
-        GCS["Google Cloud Shell<br/>External SMTP Execution Path"]
-    end
-
-    subgraph FEEDS["Threat Intelligence Providers"]
-        OP["OpenPhish Community"]
-        FEODO["Feodo Tracker"]
-        PT["PhishTank"]
-    end
-
-    subgraph TARGET["Target / Internet Providers"]
-        DNS["DNS Providers"]
-        WEB["Web · CDN · WAF"]
-        MX["Mail Providers / MX"]
-        PKI["TLS / PKI Endpoints"]
-    end
-
-    USER <-->|"Scan / intelligence result"| EDGE
-    GH -.->|"Source / deployment"| WORKER
-    EDGE --> WORKER
-    WORKER <--> D1
-    WORKER <--> KV
-    WORKER -->|"Authenticated jobs"| TUNNEL
-    TUNNEL --> RN
-
-    WORKER <-->|"DNS / HTTP evidence"| DNS
-    WORKER <-->|"Web analysis"| WEB
-
-    TLS <-->|"TLS handshake / certificate"| PKI
-    TLS <-->|"HTTPS"| WEB
-    HTTP <-->|"HTTP(S)"| WEB
-    PREVIEW <-->|"Isolated rendering"| WEB
-
-    SMTP <-->|"Direct SMTP when available"| MX
-    SMTP <-->|"SMTP execution path"| GCS
-    GCS <-->|"TCP/25 · EHLO · STARTTLS"| MX
-
-    OP -->|"Feed sync"| REP
-    FEODO -->|"Feed sync"| REP
-    PT -->|"Feed sync"| REP
-
-    RN -->|"Measurement result"| TUNNEL
-    TUNNEL --> WORKER
-    WORKER -->|"Canonical evidence"| D1
-    EDGE -->|"Rendered result"| USER
-```
-
-The topology separates three kinds of state and execution: Cloudflare D1 stores persisted scan evidence/history, Cloudflare KV handles ephemeral state/cache, and the Linux Research Node keeps its own local reputation dataset. Google Cloud Shell is shown as a specialized external SMTP execution path rather than the primary application backend or database.
-
-## Evidence-aware scoring
-
-MUCCORE does not turn missing telemetry into an automatic security failure.
-
-- `UNKNOWN` means evidence was unavailable or insufficient; it is not automatically a failure.
+- `UNKNOWN` is not automatically a failure.
 - `NOT_APPLICABLE` does not create a penalty.
 - Informational observations are separated from score-impacting findings.
-- Numeric conclusions can be withheld when required measurement coverage is missing.
-- Overall scoring summarizes measured posture rather than pretending unavailable telemetry was observed.
-
-A `PARTIAL` result therefore describes incomplete measurement, not automatically an insecure target.
+- Numeric scores may be withheld when required coverage is unavailable.
+- `PARTIAL` means incomplete measurement, not automatically an insecure target.
+- Reputation source status is not a safety score.
 
 ## Safe Preview
 
-Safe Preview provides visual context without embedding the live target in the analyst's browser. Modern pages can execute JavaScript inside the isolated capture environment, while browser traffic is constrained by validated, bounded egress controls.
+Safe Preview provides visual context without embedding the live target page in the analyst's browser. The target is rendered in an isolated browser environment with bounded network controls, and the product returns a **static screenshot** plus capture context.
 
-The analyst receives a static screenshot and capture evidence rather than an interactive target session. Observed CAPTCHA, bot-protection, rate-limit or access-denied states can be classified as evidence; MUCCORE does not solve CAPTCHAs or perform site-specific anti-bot bypass.
-
-## History & change intelligence
-
-A single scan is a snapshot. Repeated observations turn it into a timeline. MUCCORE compares completed assessments to surface meaningful changes in security controls, mail posture, TLS capability, infrastructure evidence, certificate lifecycle, module coverage and scores.
-
-Current product policy retains scan evidence for **30 days**. Safe Preview screenshots use a shorter **24-hour** retention window.
+Observed CAPTCHA, bot-protection, rate-limit or access-denied states may be classified; MUCCORE does not solve CAPTCHAs or perform site-specific anti-bot bypass.
 
 ## Security philosophy
 
-MUCCORE treats every target as untrusted input and is designed for public-surface, low-impact observation. Private/reserved network destinations are outside the intended target space.
+MUCCORE is built for low-impact observation of public Internet surfaces. Targets are treated as untrusted input and private/reserved destinations are outside the intended target space.
 
-The platform is **not** intended for exploit delivery, brute force, credential testing, destructive/state-changing requests, broad directory fuzzing or general-purpose port scanning.
+The platform is not intended for exploit delivery, brute force, credential testing, destructive/state-changing requests, broad directory fuzzing or general-purpose port scanning.
 
-## Current scope
+## Product roadmap
 
-Current production scope covers public Web, DNS, Mail, TLS, Infrastructure, passive Behavior Signals, isolated Preview, IP/network enrichment, evidence-aware scoring, historical comparison and source-level Reputation Intelligence.
+The following workflows are **planned and not yet available**:
 
-DKIM analysis, general-purpose port scanning and offensive exploitation are outside the current V1 scope.
+1. **Exposure Intelligence** — passive asset discovery and observable hostname/DNS/certificate/network relationships.
+2. **Brand & Impersonation Intelligence** — lookalike and typosquat investigation with registration, DNS, certificate and reputation context.
+3. **Certificate Intelligence** — certificate/SAN/issuer/expiry timelines and newly observed names.
+4. **Domain Lifecycle Intelligence** — chronological nameserver, MX, certificate, network and posture changes.
+5. **Email Infrastructure Intelligence** — expected sending infrastructure correlated with Message Intelligence observations.
+6. **URL Intelligence** — redirect journey, hostname transitions, reputation, behavior and Safe Preview.
+7. **Compare Targets** — side-by-side comparison of measured controls, coverage and findings without inventing a competitive ranking.
+8. **Continuous Intelligence** — watchlists, repeat observations, meaningful-change detection and alerts.
+
+## Current scope notes
+
+- Surface Scan execution is currently request-bound.
+- Surface Mail does not independently perform full DKIM cryptographic verification; Message Intelligence can parse and explain authentication results present in supplied headers.
+- Reputation coverage depends on source freshness and provider availability.
+- Network restrictions can leave some SMTP transport observations unknown.
 
 ---
 
-**MUCCORE Internet Passport** — evidence first, surface aware, built for understanding what the Internet can see.
+**MUCCORE Internet Passport** — built to show how your digital presence looks from the outside.
