@@ -1,6 +1,6 @@
 # MUCCORE Internet Passport
 
-**Domain, URL ve internete açık altyapılar için Public Surface Intelligence platformu.**
+**Dijital varlığınızı dışarıdan görün.**
 
 [![Durum](https://img.shields.io/badge/durum-aktif-6C63FF)](https://passport.muccore.com)
 [![Platform](https://img.shields.io/badge/platform-MUCCORE-111827)](https://passport.muccore.com)
@@ -8,239 +8,184 @@
 **Canlı platform:** https://passport.muccore.com  
 **English:** [README.md](README.md)
 
-MUCCORE Internet Passport, internete açık yüzeyleri evidence-backed bir security posture görünümüne dönüştürür. Web, DNS, Mail, TLS, Infrastructure ve pasif Behavior evidence'ını bir araya getirir; izole Safe Preview ile görsel bağlam ekler, geçmiş gözlemleri saklar ve ayrı bir Reputation lookup yüzeyi sunar.
+MUCCORE Internet Passport, dijital varlığın dışarıdan nasıl göründüğünü anlamaya yönelik bir security research platformudur. Persisted **Surface Intelligence**, ayrı **Reputation Intelligence**, tamamen browser-side **Message Intelligence** ve **Change Intelligence** yeteneklerini tek üründe birleştirir.
 
-> Bu repository yalnızca **public ürün dokümantasyonu** içerir. Production source code, deployment configuration, private infrastructure ayrıntıları ve operasyonel secret'lar burada yayınlanmaz.
+> Bu repository yalnızca **public ürün dokümantasyonu** içerir. Production source code, secret'lar ve private operasyonel configuration burada yayınlanmaz.
 
+## Ürüne genel bakış
 
-Reputation yüzeyi ayrıca canlı DNSBL/RHSBL kontrollerini kullanır: Spamhaus ZEN/DBL, SpamCop SCBL, DroneBL, SPFBL, UCEPROTECT Level 1–3, Backscatterer, PSBL, blocklist.de, Scientific Spam IP/RHSBL, Anonmails DNSBL ve Spam Eating Monkey URI. Domain/URL hedeflerinde en fazla iki çözümlenmiş public IPv4 adresi de uygun IP listelerinde kontrol edilir. Sağlayıcı timeout/erişim hataları temiz sonuç olarak değil, unavailable olarak raporlanır.
+### Surface Intelligence — 7 persisted scan modülü
 
-## MUCCORE neleri analiz ediyor?
-
-Normal bir surface assessment yedi research modülünden oluşur:
-
-| Yüzey | Güncel kapsam |
+| Modül | Neyi gözlemler? |
 |---|---|
 | **Web Security** | HTTP/HTTPS davranışı, redirect'ler, security header'lar, HSTS, CSP, framing kontrolleri, cookie'ler ve browser-facing policy'ler |
-| **DNS Security** | Public DNS kayıtları, DNSSEC, CAA, authoritative nameserver posture ve ilgili evidence |
-| **Mail Security** | MX envanteri, recursive SPF analizi, DMARC, MTA-STS, TLS-RPT ve SMTP/STARTTLS transport evidence |
-| **TLS & Certificates** | Certificate trust/hostname/chain/expiry, TLS 1.0–1.3 capability, negotiated cipher, sınırlı weak/deprecated cipher kontrolleri ve forward-secrecy evidence |
-| **Infrastructure** | Public IPv4/IPv6 ilişkileri, PTR/rDNS, edge/topology evidence ve sınırlı IP/ASN/network/geolocation enrichment |
-| **Behavior Signals** | Redirect, form/password field, iframe, external script ve meta refresh gibi pasif/sınırlı gözlemler |
-| **Safe Preview** | İzole browser rendering, statik screenshot evidence ve gözlemlenen challenge/protection sınıflandırması |
+| **DNS Security** | Public DNS kayıtları, DNSSEC, CAA ve authoritative nameserver posture |
+| **Mail Security** | MX envanteri, SPF, DMARC, MTA-STS, TLS-RPT ve SMTP/STARTTLS transport gözlemleri |
+| **TLS & Certificates** | Certificate trust/hostname/chain/expiry, TLS capability, negotiated cipher ve sınırlı protocol/cipher gözlemleri |
+| **Infrastructure** | Public IPv4/IPv6 ilişkileri, PTR/rDNS, edge/topology ve sınırlı network/ASN enrichment |
+| **Behavior Signals** | Redirect, form/password field, iframe, external script ve meta refresh'in pasif/sınırlı gözlemleri |
+| **Safe Preview** | İzole browser rendering, statik screenshot ve gözlemlenen challenge/protection durumları |
 
-MUCCORE ayrıca coverage-aware scoring, structured findings, raw technical evidence, JSON export, **30 günlük scan history** ve önceki tamamlanmış gözlemlerle değişim karşılaştırması sunar.
+Surface sonuçlarında coverage-aware scoring, structured findings, raw teknik gözlemler, JSON export, history ve change comparison bulunur.
 
-## Reputation Intelligence
+### Reputation Intelligence
 
-Reputation, yedi persisted scan modülünden biri değil; **ayrı bir lookup surface'idir**. Domain, public IPv4 ve HTTP(S) URL'ler MUCCORE'un senkronize lokal threat-intelligence feed'lerinde kontrol edilebilir.
+Reputation, **yedi persisted Surface Scan modülünden ayrıdır**. Domain, public IPv4 ve HTTP(S) URL; senkronize lokal threat feed'leri ve canlı DNS reputation kaynaklarıyla araştırılabilir.
 
-Güncel feed kapsamı:
+Güncel source family'leri OpenPhish, Feodo Tracker, PhishTank ve Spamhaus ZEN/DBL, SpamCop, DroneBL, SPFBL, UCEPROTECT, Backscatterer, PSBL, blocklist.de, Scientific Spam, Anonmails ve Spam Eating Monkey gibi DNSBL/RHSBL kaynaklarını içerir.
 
-- **OpenPhish Community** — phishing URL ve host'ları
-- **Feodo Tracker** — botnet C2 IPv4 indicator'ları
-- **PhishTank** — verified/online phishing URL ve host'ları
+MUCCORE source semantiğini korur:
 
-Sonuçlar source-level match, classification, timestamp ve feed-health bağlamını korur. Configured feed'lerde bulunmayan bir target **otomatik olarak güvenli kabul edilmez** ve evidence yokluğundan yapay bir aggregate threat score üretilmez.
+- provider failure/timeout **unavailable**'dır, clean değildir;
+- “listede yok” **güvenli** anlamına gelmez;
+- listing, source evidence'dır; tek başına malicious olduğunun kanıtı değildir;
+- eksik gözlemden generic threat score üretilmez.
+
+### Message Intelligence — browser-only header forensics
+
+Message Intelligence, kullanıcının sağladığı raw e-mail header'ı analiz eder ve mevcut evidence ölçüsünde şunları yeniden oluşturur:
+
+- visible ve envelope identity;
+- raporlanan SPF, DKIM, DMARC ve ARC sonuçları;
+- mevcutsa DKIM signing metadata;
+- Received-hop journey ve timing;
+- header'da bulunan transport/TLS ipuçları;
+- MIME/content structure;
+- mail-client/origin sinyalleri;
+- vendor/security telemetry;
+- duplicate, malformed, chronology ve alignment ile ilgili review sinyalleri;
+- kategorize header açıklamaları ve raw evidence.
+
+Raporlanan authentication, bağımsız cryptographic verification gibi sunulmaz. Receiving system `dkim=pass` raporladıysa MUCCORE bunu reported result olarak gösterir; browser'ın imzayı bağımsız doğruladığını iddia etmez.
+
+#### Privacy
+
+**E-mail header'ınız browser'ınızdan dışarı çıkmaz.**
+
+```text
+Raw header → browser-side analyzer → forensic result
+```
+
+Message Header Analyzer supplied header'ı MUCCORE sunucularına göndermez ve persist etmez. Message Intelligence için **retention yoktur**.
+
+### Change Intelligence
+
+Change Intelligence sekizinci scanner modülü değil, cross-cutting product capability'sidir. Tekrarlanan Surface Scan'ler önceki tamamlanmış gözlemlerle karşılaştırılabilir.
+
+Güncel retention politikası:
+
+| Veri | Retention |
+|---|---:|
+| Surface Scan evidence/history | **30 gün** |
+| Safe Preview screenshot | **24 saat** |
+| Message Intelligence raw header/result | **Saklanmaz** |
 
 ## Ürün modeli
 
 ```mermaid
 flowchart LR
-    T["Public Target"] --> C["MUCCORE<br/>Collection & Analysis"]
-    C --> W["Web"]
-    C --> D["DNS"]
-    C --> M["Mail"]
-    C --> L["TLS"]
-    C --> I["Infrastructure"]
-    C --> B["Behavior"]
-    C --> P["Safe Preview"]
-    C --> R["Reputation Lookup"]
+    A["Analist"] --> S["Surface Intelligence<br/>7 persisted modül"]
+    A --> R["Reputation Intelligence"]
+    A --> M["Message Intelligence<br/>browser-only"]
 
-    W --> E["Evidence Layer"]
-    D --> E
-    M --> E
-    L --> E
-    I --> E
-    B --> E
-    P --> E
+    S --> P["Security posture<br/>findings · coverage · scores"]
+    S --> C["Change Intelligence<br/>history · deltas"]
+    R --> RI["Source-level reputation context"]
+    M --> MF["Message forensics<br/>identity · auth · routing · transport"]
 
-    E --> F["Findings + Coverage"]
-    F --> S["Security Posture Scores"]
-    S --> H["History + Change Intelligence"]
-    R --> RI["Source-level Reputation Evidence"]
-
-    classDef core fill:#17152b,stroke:#7c5cff,color:#fff,stroke-width:2px;
-    classDef module fill:#0e1420,stroke:#53657d,color:#fff;
-    classDef evidence fill:#101b1a,stroke:#29c995,color:#fff;
-    class T,C core;
-    class W,D,M,L,I,B,P,R module;
-    class E,F,S,H,RI evidence;
+    classDef primary fill:#17152b,stroke:#7c5cff,color:#fff,stroke-width:2px;
+    classDef secondary fill:#0e1420,stroke:#53657d,color:#fff;
+    class A,S,R,M primary;
+    class P,C,RI,MF secondary;
 ```
 
 ## Üst seviye mimari
 
-Public dokümantasyon bilinçli olarak sorumlulukları gösterir; private deployment ayrıntılarını yayınlamaz.
+Public dokümantasyon sorumlulukları gösterir; private deployment ayrıntılarını bilinçli olarak yayınlamaz.
 
 ```mermaid
 flowchart TB
-    U([Analist]) --> UI["MUCCORE Internet Passport<br/>Surface Intelligence Console"]
+    U(["Analist / Browser"])
+    UI["MUCCORE<br/>Web Console"]
 
     subgraph CP["Control & Analysis Plane"]
-        O["Scan Orchestration"]
-        A["Analysis Engines"]
-        S[("Evidence & History")]
-        O --> A
-        O <--> S
+        O["Validation & Orchestration"]
+        A["Surface Analysis Engines"]
+        H[("Surface History & Change Data")]
     end
 
     subgraph MP["Isolated Measurement Plane"]
         N["MUCCORE Research Node"]
-        TP["HTTPS / TLS Measurements"]
-        SP["SMTP / STARTTLS Measurements"]
-        BP["Isolated Browser Capture"]
-        RP["Local Reputation Intelligence"]
-        N --> TP
-        N --> SP
-        N --> BP
-        N --> RP
+        T["HTTPS / TLS"]
+        S["SMTP / STARTTLS"]
+        B["Isolated Browser Capture"]
+        R["Reputation Intelligence"]
     end
 
+    M["Message Intelligence<br/>browser içinde çalışır"]
+
+    U --> UI
+    U --> M
     UI --> O
-    O -->|"Authenticated measurement jobs"| N
-    A --> NET((Public Internet))
-    TP --> NET
-    SP --> NET
-    BP --> NET
-
-    classDef edge fill:#17152b,stroke:#7c5cff,color:#fff,stroke-width:2px;
-    classDef plane fill:#0e1420,stroke:#53657d,color:#fff;
-    classDef data fill:#101b1a,stroke:#29c995,color:#fff;
-    class UI,O,A,N,TP,SP,BP,RP edge;
-    class U,NET plane;
-    class S data;
+    O --> A
+    O <--> H
+    O -->|"authenticated measurement jobs"| N
+    N --> T
+    N --> S
+    N --> B
+    N --> R
+    A --> NET(("Public Internet"))
+    T --> NET
+    S --> NET
+    B --> NET
+    R --> NET
 ```
 
-Control & Analysis Plane target validation, modül koordinasyonu, evidence normalization, coverage-aware sonuç üretimi ve historical observation yönetimini üstlenir. Isolated Measurement Plane ise dedicated network socket'i, browser execution veya lokal reputation data gerektiren ölçümleri gerçekleştirir.
+Buradaki önemli sınır bilinçlidir: Surface Scan state/history server-side ürün datasıdır; Message Intelligence ise analistin browser'ında kalır.
 
-## Deployment ve provider topolojisi
+## Scoring semantiği
 
-Bu görünüm yalnızca source code mimarisini değil, MUCCORE etrafındaki gerçek servis/provider topolojisini gösterir. Bu nedenle repository içinde application module olarak bulunmayan operasyonel bileşenler de diyagramda yer alır.
+MUCCORE coverage-aware çalışır:
 
-```mermaid
-flowchart TB
-    USER(["Analist / Browser"])
-    GH["GitHub<br/>Private production repo<br/>Public documentation repo"]
-
-    subgraph CF["Cloudflare · Edge / Control / Data Plane"]
-        EDGE["passport.muccore.com<br/>Public UI + API"]
-        WORKER["Cloudflare Worker<br/>Validation · Orchestration<br/>Analysis · Scoring"]
-        D1[("Cloudflare D1<br/>Scans · Findings<br/>History · Deltas")]
-        KV[("Cloudflare KV<br/>Ephemeral State · Cache")]
-        TUNNEL["Cloudflare Tunnel<br/>Authenticated Service Path"]
-    end
-
-    subgraph LINUX["Linux Server · MUCCORE Research Node"]
-        RN["Node.js Research Service"]
-        TLS["HTTPS / TLS Probe"]
-        HTTP["Pinned HTTP Probe"]
-        SMTP["SMTP / STARTTLS Probe"]
-        PREVIEW["Playwright / Chromium<br/>Safe Preview"]
-        REP["Reputation Engine"]
-        RDB[("Local Reputation DB<br/>Indicators · Feed State<br/>Freshness")]
-        RN --> TLS
-        RN --> HTTP
-        RN --> SMTP
-        RN --> PREVIEW
-        RN --> REP
-        REP <--> RDB
-    end
-
-    subgraph GOOGLE["Google Cloud"]
-        GCS["Google Cloud Shell<br/>External SMTP Execution Path"]
-    end
-
-    subgraph FEEDS["Threat Intelligence Provider'ları"]
-        OP["OpenPhish Community"]
-        FEODO["Feodo Tracker"]
-        PT["PhishTank"]
-    end
-
-    subgraph TARGET["Target / Internet Provider'ları"]
-        DNS["DNS Provider'ları"]
-        WEB["Web · CDN · WAF"]
-        MX["Mail Provider'ları / MX"]
-        PKI["TLS / PKI Endpoint'leri"]
-    end
-
-    USER <-->|"Scan / intelligence sonucu"| EDGE
-    GH -.->|"Source / deployment"| WORKER
-    EDGE --> WORKER
-    WORKER <--> D1
-    WORKER <--> KV
-    WORKER -->|"Authenticated job"| TUNNEL
-    TUNNEL --> RN
-
-    WORKER <-->|"DNS / HTTP evidence"| DNS
-    WORKER <-->|"Web analysis"| WEB
-
-    TLS <-->|"TLS handshake / certificate"| PKI
-    TLS <-->|"HTTPS"| WEB
-    HTTP <-->|"HTTP(S)"| WEB
-    PREVIEW <-->|"Isolated rendering"| WEB
-
-    SMTP <-->|"Mümkün olduğunda direct SMTP"| MX
-    SMTP <-->|"SMTP execution path"| GCS
-    GCS <-->|"TCP/25 · EHLO · STARTTLS"| MX
-
-    OP -->|"Feed sync"| REP
-    FEODO -->|"Feed sync"| REP
-    PT -->|"Feed sync"| REP
-
-    RN -->|"Measurement result"| TUNNEL
-    TUNNEL --> WORKER
-    WORKER -->|"Canonical evidence"| D1
-    EDGE -->|"Rendered result"| USER
-```
-
-Topoloji üç farklı state/execution alanını ayırır: persisted scan evidence/history Cloudflare D1'da, ephemeral state/cache Cloudflare KV'de, reputation indicator ve feed state ise Linux Research Node üzerindeki lokal reputation database'de tutulur. Google Cloud Shell ana backend veya database değil; SMTP ölçümleri için kullanılan özel external execution path olarak gösterilir.
-
-## Evidence-aware scoring
-
-MUCCORE ölçülemeyen telemetry'yi otomatik güvenlik hatasına dönüştürmez.
-
-- `UNKNOWN`, evidence'ın yetersiz veya ulaşılamaz olduğunu belirtir; otomatik failure değildir.
-- `NOT_APPLICABLE` score cezası oluşturmaz.
+- `UNKNOWN` otomatik failure değildir.
+- `NOT_APPLICABLE` ceza oluşturmaz.
 - Informational observation'lar score-impacting finding'lerden ayrılır.
-- Gerekli measurement coverage eksikse numeric sonuç verilmeyebilir.
-- Overall scoring, unavailable telemetry'yi ölçülmüş gibi kabul etmek yerine gerçekten ölçülen posture'u özetler.
-
-Bu yüzden `PARTIAL`, target'ın otomatik olarak güvensiz olduğu anlamına değil, ölçümün eksik kaldığı anlamına gelir.
+- Gerekli coverage yoksa numeric score verilmeyebilir.
+- `PARTIAL`, otomatik insecure target değil eksik measurement anlamına gelir.
+- Reputation source status bir safety score değildir.
 
 ## Safe Preview
 
-Safe Preview, canlı target sayfasını analistin browser'ına embed etmeden görsel bağlam üretir. Modern sayfalar izole capture ortamında JavaScript çalıştırabilir; browser trafiği validated ve bounded egress kontrolleriyle sınırlandırılır.
+Safe Preview canlı target sayfasını analistin browser'ına embed etmeden görsel bağlam üretir. Target izole browser ortamında bounded network kontrolleriyle render edilir ve ürün **statik screenshot** + capture context döndürür.
 
-Analiste interaktif target session yerine statik screenshot ve capture evidence verilir. Gözlemlenen CAPTCHA, bot-protection, rate-limit veya access-denied durumları evidence olarak sınıflandırılabilir; MUCCORE CAPTCHA çözmez veya siteye özel anti-bot bypass yapmaz.
-
-## History & Change Intelligence
-
-Tek scan bir snapshot'tır; tekrarlanan gözlemler bunu timeline'a dönüştürür. MUCCORE tamamlanmış assessment'ları karşılaştırarak security control, mail posture, TLS capability, infrastructure evidence, certificate lifecycle, module coverage ve score değişikliklerini gösterebilir.
-
-Mevcut ürün politikasında scan evidence **30 gün**, Safe Preview screenshot'ları ise **24 saat** tutulur.
+Gözlemlenen CAPTCHA, bot-protection, rate-limit veya access-denied durumları sınıflandırılabilir; MUCCORE CAPTCHA çözmez veya site-specific anti-bot bypass yapmaz.
 
 ## Güvenlik yaklaşımı
 
-MUCCORE her target'ı untrusted input olarak kabul eder ve public-surface, low-impact observation yaklaşımıyla tasarlanmıştır. Private/reserved network destination'lar hedef kapsamının dışındadır.
+MUCCORE public Internet yüzeylerinde düşük etkili gözlem için tasarlanmıştır. Target'lar untrusted input kabul edilir; private/reserved destination'lar hedef kapsamı dışındadır.
 
 Platform exploit delivery, brute force, credential testing, destructive/state-changing request, broad directory fuzzing veya genel amaçlı port scanning için tasarlanmamıştır.
 
-## Mevcut kapsam
+## Product Roadmap
 
-Production kapsamı şu anda public Web, DNS, Mail, TLS, Infrastructure, passive Behavior Signals, isolated Preview, IP/network enrichment, evidence-aware scoring, historical comparison ve source-level Reputation Intelligence içerir.
+Aşağıdaki workflow'lar **planlanmaktadır ve henüz mevcut değildir**:
 
-DKIM analizi, genel amaçlı port scanning ve offensive exploitation mevcut V1 scope dışındadır.
+1. **Exposure Intelligence** — passive asset discovery ve gözlemlenebilir hostname/DNS/certificate/network ilişkileri.
+2. **Brand & Impersonation Intelligence** — lookalike/typosquat araştırması; registration, DNS, certificate ve reputation context.
+3. **Certificate Intelligence** — certificate/SAN/issuer/expiry timeline ve yeni gözlemlenen isimler.
+4. **Domain Lifecycle Intelligence** — nameserver, MX, certificate, network ve posture değişimlerinin kronolojik görünümü.
+5. **Email Infrastructure Intelligence** — beklenen sending infrastructure ile Message Intelligence gözlemlerinin korelasyonu.
+6. **URL Intelligence** — redirect journey, hostname transition, reputation, behavior ve Safe Preview.
+7. **Compare Targets** — ölçülen control, coverage ve finding'leri yapay competitive ranking üretmeden yan yana karşılaştırma.
+8. **Continuous Intelligence** — watchlist, repeat observation, anlamlı change detection ve alert'ler.
+
+## Güncel scope notları
+
+- Surface Scan execution şu anda request-bound çalışır.
+- Surface Mail full DKIM cryptographic verification'ı bağımsız olarak yapmaz; Message Intelligence supplied header içindeki authentication result'larını parse edip açıklar.
+- Reputation coverage source freshness ve provider availability'ye bağlıdır.
+- Network kısıtları bazı SMTP transport gözlemlerini unknown bırakabilir.
 
 ---
 
-**MUCCORE Internet Passport** — evidence first, surface aware, Internet'in ne gördüğünü anlamak için tasarlandı.
+**MUCCORE Internet Passport** — dijital varlığınızın dışarıdan nasıl göründüğünü göstermek için tasarlandı.
