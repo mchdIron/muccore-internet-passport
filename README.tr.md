@@ -143,6 +143,92 @@ flowchart TB
 
 Buradaki önemli sınır bilinçlidir: Surface Scan state/history server-side ürün datasıdır; Message Intelligence ise analistin browser'ında kalır.
 
+## Deployment ve provider topolojisi
+
+Bu map generic bir application diagramına indirgenmeden MUCCORE'un gerçek operasyonel topolojisini korur.
+
+```mermaid
+flowchart TB
+    USER(["Analist / Browser"])
+    GH["GitHub<br/>Private production repo<br/>Public documentation repo"]
+
+    subgraph CF["Cloudflare · Edge / Control / Data Plane"]
+        EDGE["passport.muccore.com<br/>Public UI + API"]
+        WORKER["Cloudflare Worker<br/>Validation · Orchestration<br/>Analysis · Scoring"]
+        D1[("Cloudflare D1<br/>Surface scans · Findings<br/>History · Deltas")]
+        KV[("Cloudflare KV<br/>Ephemeral State · Cache")]
+        TUNNEL["Cloudflare Tunnel<br/>Authenticated Service Path"]
+    end
+
+    subgraph LINUX["Linux Server · MUCCORE Research Node"]
+        RN["Node.js Research Service"]
+        TLS["HTTPS / TLS Probe"]
+        HTTP["Pinned HTTP Probe"]
+        SMTP["SMTP / STARTTLS Probe"]
+        PREVIEW["Playwright / Chromium<br/>Safe Preview"]
+        REP["Reputation Intelligence Engine"]
+        RDB[("Local Reputation DB<br/>Indicators · Feed State<br/>Freshness")]
+        SYNC["Reputation Feed Sync"]
+        RN --> TLS
+        RN --> HTTP
+        RN --> SMTP
+        RN --> PREVIEW
+        RN --> REP
+        SYNC --> RDB
+        REP <--> RDB
+    end
+
+    subgraph GOOGLE["Google Cloud"]
+        GCS["Google Cloud Shell<br/>External SMTP Execution Path"]
+    end
+
+    subgraph FEEDS["Threat Intelligence Provider'ları"]
+        OP["OpenPhish Community"]
+        FEODO["Feodo Tracker"]
+        PT["PhishTank"]
+        DNSBL["Live DNSBL / RHSBL Provider'ları<br/>Spamhaus · SpamCop · DroneBL · SPFBL<br/>UCEPROTECT · PSBL · diğerleri"]
+    end
+
+    subgraph TARGET["Target / Internet Provider'ları"]
+        DNS["DNS Provider'ları"]
+        WEB["Web · CDN · WAF"]
+        MX["Mail Provider'ları / MX"]
+        PKI["TLS / PKI Endpoint'leri"]
+    end
+
+    USER <-->|"Surface scan / reputation sonucu"| EDGE
+    USER -->|"Message Intelligence<br/>yalnızca browser-side"| USER
+    GH -.->|"Source / deployment"| WORKER
+    EDGE --> WORKER
+    WORKER <--> D1
+    WORKER <--> KV
+    WORKER -->|"Authenticated job"| TUNNEL
+    TUNNEL --> RN
+
+    WORKER <-->|"DNS / HTTP evidence"| DNS
+    WORKER <-->|"Web analysis"| WEB
+    TLS <-->|"TLS handshake / certificate"| PKI
+    TLS <-->|"HTTPS"| WEB
+    HTTP <-->|"HTTP(S)"| WEB
+    PREVIEW <-->|"Isolated rendering"| WEB
+
+    SMTP <-->|"Mümkün olduğunda direct SMTP"| MX
+    SMTP <-->|"SMTP execution path"| GCS
+    GCS <-->|"TCP/25 · EHLO · STARTTLS"| MX
+
+    OP -->|"Feed sync"| SYNC
+    FEODO -->|"Feed sync"| SYNC
+    PT -->|"Feed sync"| SYNC
+    DNSBL -.->|"Live DNS query"| REP
+
+    RN -->|"Measurement result"| TUNNEL
+    TUNNEL --> WORKER
+    WORKER -->|"Canonical Surface Scan evidence"| D1
+    EDGE -->|"Rendered result"| USER
+```
+
+Cloudflare D1 persisted Surface Scan lifecycle/evidence/history/delta için source of truth'tur; KV ephemeral state/cache'tir. Linux Research Node kendi lokal reputation dataset'ini ve feed freshness bilgisini tutar. Senkronize feed'ler lokal store'a akar; DNSBL/RHSBL provider'ları ise canlı sorgulanır. Google Cloud Shell primary backend/database değil, özel external SMTP execution path'tir. Message Intelligence bu persistence yollarının bilinçli olarak dışındadır ve browser'da kalır.
+
 ## Scoring semantiği
 
 MUCCORE coverage-aware çalışır:
